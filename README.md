@@ -259,7 +259,169 @@ MAE from Approach 3 (One-Hot Encoding):
 ```
 
 ## Pipelines
-A critical skill for deploying (and even testing) complex models with pre-processing.
+> A critical skill for deploying (and even testing) complex models with pre-processing.
+> 
+> full example of pipelines: [kaggle.com/alexisbcook/exercise-pipelines](https://www.kaggle.com/alexisbcook/exercise-pipelines); or [exercise-pipelines.ipynb]()
+
+A simple way to keep your data preprocessing and modeling code organized. Specifically, a pipeline bundles preprocessing and modeling steps so you can use the whole bundle as if it were a single step.
+
+***Why to use pipelines: ***
+1. **Cleaner Code:** Accounting for data at each step of preprocessing can get messy. With a pipeline, you won't need to manually keep track of your training and validation data at each step. like on [DAGsHub](https://dagshub.com/)
+2. **Fewer Bugs:** There are fewer opportunities to misapply a step or forget a preprocessing step.
+3. **Easier to Productionize:** It can be surprisingly hard to transition a model from a prototype to something deployable at scale. We won't go into the many related concerns here, but pipelines can help.
+
+We take a peek at the training data from [Melbourne Housing dataset](https://www.kaggle.com/dansbecker/melbourne-housing-snapshot/home) with the `head()` method below. Notice that the data contains both [categorical data](https://github.com/gabboraron/Intermediate-Machine-Learning-Kaggle/edit/main/README.md#categorical-variables) and columns with [missing values](https://github.com/gabboraron/Intermediate-Machine-Learning-Kaggle/edit/main/README.md#missing-values). With a pipeline, it's easy to deal with both!
+```
+       Type   Method  Regionname            Rooms   Distance  Postcode  Bedroom2  Bathroom  Car   Landsize  BuildingArea  YearBuilt   Lattitude   Longtitude  Propertycount
+12167   u       S     Southern Metropolitan   1       5.0     3182.0      1.0        1.0    1.0   0.0         NaN          1940.0     -37.85984   144.9867     13240.0
+6524    h       SA    Western Metropolitan    2       8.0     3016.0      2.0        2.0    1.0   193.0       NaN          NaN        -37.85800   144.9005     6380.0
+8413    h       S     Western Metropolitan    3      12.6     3020.0      3.0        1.0    1.0   555.0       NaN          NaN        -37.79880   144.8220     3755.0
+2919    u       SP    Northern Metropolitan   3      13.0     3046.0      3.0        1.0    1.0   265.0       NaN          1995.0     -37.70830   144.9158     8870.0
+6043    h       S     Western Metropolitan    3      13.3     3020.0      3.0        1.0    2.0   673.0       673.0        1970.0     -37.76230   144.8272     4217.0
+```
+
+### Step 1: Define Preprocessing Steps
+We use [sklearn.compose.ColumnTransformer](https://scikit-learn.org/stable/modules/generated/sklearn.compose.ColumnTransformer.html) to boundle dfferent preprocessing steps:
+- impute missing values in numerical data
+- impute missing values and applies one-hot encoding in categorial data
+
+```Python
+from sklearn.compose import ColumnTransformer
+from sklearn.pipeline import Pipeline
+from sklearn.impute import SimpleImputer
+from sklearn.preprocessing import OneHotEncoder
+
+# Preprocessing for numerical data
+numerical_transformer = SimpleImputer(strategy='constant')
+
+# Preprocessing for categorical data
+categorical_transformer = Pipeline(steps=[
+    ('imputer', SimpleImputer(strategy='most_frequent')),
+    ('onehot', OneHotEncoder(handle_unknown='ignore'))
+])
+
+# Bundle preprocessing for numerical and categorical data
+preprocessor = ColumnTransformer(
+    transformers=[
+        ('num', numerical_transformer, numerical_cols),
+        ('cat', categorical_transformer, categorical_cols)
+    ])
+```
+
+### Step 2: Define the Model
+Using [`RandomForestRegressor`](https://scikit-learn.org/stable/modules/generated/sklearn.ensemble.RandomForestRegressor.html)
+```Python
+from sklearn.ensemble import RandomForestRegressor
+
+model = RandomForestRegressor(n_estimators=100, random_state=0)
+```
+
+### Step 3: Create and Evaluate the Pipeline
+```Python
+from sklearn.metrics import mean_absolute_error
+
+# Bundle preprocessing and modeling code in a pipeline
+my_pipeline = Pipeline(steps=[('preprocessor', preprocessor),
+                              ('model', model)
+                             ])
+
+# Preprocessing of training data, fit model 
+my_pipeline.fit(X_train, y_train)
+
+# Preprocessing of validation data, get predictions
+preds = my_pipeline.predict(X_valid)    # the pipeline automatically preprocesses the features
+                                        # before generating predictions. 
+                                        # (However, without a pipeline, we have to remember 
+                                        # to preprocess the validation data before making predictions.)
+
+# Evaluate the model
+score = mean_absolute_error(y_valid, preds)
+print('MAE:', score)
+```
+```
+Out:
+MAE: 160679.18917034855
+```
+
+> ***NOTE: If MAE is too high amend `numerical_transformer`, `categorical_transformer`, and/or `model` to get better performance.***
+> 
+> *In the case of `numerical_transformer` and `categorical_transformer` this means that you have to change the [`SimpleImputer()`](https://scikit-learn.org/stable/modules/generated/sklearn.impute.SimpleImputer.html)'s `strategy` attribute  and/or set up better `fill_value` too.*
+> 
+> *In the case of `model` you can change in the [`RandomForestRegressor()`](https://scikit-learn.org/stable/modules/generated/sklearn.ensemble.RandomForestRegressor.html) 's `n_estimators` and `random_state`.* 
+
+## Cross-Validation
+[Wikipedia](https://en.wikipedia.org/wiki/Cross-validation_(statistics))
+
+> A better way to test your models.
+>
+> You will face choices about what predictive variables to use, what types of models to use, what arguments to supply to those models, etc. So far, you have made these choices in a data-driven way by measuring model quality with a validation (or holdout) set.
+>
+> *ex: imagine you have a dataset with 5000 rows. You will typically keep about 20% of the data as a validation dataset, or 1000 rows. But this leaves some random chance in determining model scores. That is, a model might do well on one set of 1000 rows, even if it would be inaccurate on a different 1000 rows*
+>
+> ***Unfortunately, we can only get a large validation set by removing rows from our training data, and smaller training datasets mean worse models!***
+> 
+> ![3.1. Cross-validation: evaluating estimator performance - scikit-learn](https://scikit-learn.org/stable/_images/grid_search_workflow.png)
+
+We could begin by dividing the data into 5 pieces, each 20% of the full dataset. In this case, we say that we have broken the data into 5 *"folds"*.
+
+- **Experiment 1**, we use the first fold as a validation (or holdout) set and everything else as training data. This gives us a measure of model quality based on a 20% holdout set.
+- **Experiment 2**, we hold out data from the second fold (and use everything except the second fold for training the model). The holdout set is then used to get a second estimate of model quality.
+- We repeat this process, using every fold once as the holdout set. Putting this together, 100% of the data is used as holdout at some point, and we end up with a measure of model quality that is based on all of the rows in the dataset (even if we don't use all rows simultaneously).
+
+![wikipedia - Illustration of leave-one-out cross-validation (LOOCV) when n = 8 observations. A total of 8 models will be trained and tested.](https://upload.wikimedia.org/wikipedia/commons/c/c7/LOOCV.gif)
+
+And we can do this on the all dataset:
+![grid_search_cross_validation](https://scikit-learn.org/stable/_images/grid_search_cross_validation.png)
+
+***it can take longer to run, because it estimates multiple models (one for each fold)***
+
+**when use it:**
+- *For small datasets*, where extra computational burden isn't a big deal, you should run cross-validation. If your model takes a couple minutes or less to run, it's probably worth switching to cross-validation.
+- *For larger datasets*, a single validation set is sufficient. Your code will run faster, and you may have enough data that there's little need to re-use some of it for holdout.
+
+We obtain the cross-validation scores with the [`cross_val_score()`](https://scikit-learn.org/stable/modules/generated/sklearn.model_selection.cross_val_score.html) function from [scikit-learn](https://scikit-learn.org/stable/index.html).
+- `cv` - Determines the cross-validation splitting strategy. Possible inputs for cv are:
+   - `None` - by default 5-fold cross validation
+   - `int` -  to specify the number of folds in a (Stratified)KFold
+   - [CV splitter](https://scikit-learn.org/stable/glossary.html#term-CV-splitter) like [`train_test_split`](https://scikit-learn.org/stable/modules/generated/sklearn.model_selection.train_test_split.html#sklearn.model_selection.train_test_split): `clf = svm.SVC(kernel='linear', C=1).fit(X_train, y_train)`
+     - `cross-validation generator` - A non-estimator family of classes used to split a dataset into a sequence of train and test portions 
+     -  `cross-validation estimator` An estimator that has built-in cross-validation capabilities to automatically select the best hyper-parameters ex: [`ElasticNetCV`](https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.ElasticNetCV.html#sklearn.linear_model.ElasticNetCV), [`LogisticRegressionCV`](https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.LogisticRegressionCV.html#sklearn.linear_model.LogisticRegressionCV)
+     -  `scorer` - A non-estimator callable object which evaluates an estimator on given test data, returning a number. `clf.score(X_test, y_test)`. **higher return values are better than lower return values**. If you are using [`GridSearchCV`](https://scikit-learn.org/stable/modules/generated/sklearn.model_selection.GridSearchCV.html#sklearn.model_selection.GridSearchCV) or [`cross_val_score`](https://scikit-learn.org/stable/modules/generated/sklearn.model_selection.cross_val_score.html#sklearn.model_selection.cross_val_score) you can set [`scoring`](https://scikit-learn.org/stable/modules/model_evaluation.html#scoring-parameter) parameter.
+   - An iterable that generates (train, test) splits as arrays of indices, like [`train_test_split`](https://scikit-learn.org/stable/modules/generated/sklearn.model_selection.train_test_split.html#sklearn.model_selection.train_test_split)
+
+```Python
+from sklearn.ensemble import RandomForestRegressor
+from sklearn.pipeline import Pipeline
+from sklearn.impute import SimpleImputer
+from sklearn.model_selection import cross_val_score
+
+my_pipeline = Pipeline(steps=[('preprocessor', SimpleImputer()),
+                              ('model', RandomForestRegressor(n_estimators=50,
+                                                              random_state=0))
+                             ])
+
+# Multiply by -1 since sklearn calculates *negative* MAE
+scores = -1 * cross_val_score(my_pipeline, X, y,
+                              cv=5,
+                              scoring='neg_mean_absolute_error') # which is a regressor: 
+                                                                 # https://scikit-learn.org/stable/modules/generated/sklearn.metrics.mean_absolute_error.html#sklearn.metrics.mean_absolute_error
+
+print("MAE scores:\n", scores)
+print("\nAverage MAE score (across experiments):")
+print(scores.mean())
+```
+```
+Out:
+MAE scores:
+ [301628.7893587  303164.4782723  287298.331666   236061.84754543
+ 260383.45111427]
+Average MAE score (across experiments):
+277707.3795913405
+```
+
+***Using cross-validation yields a much better measure of model quality, with the added benefit of cleaning up our code: note that we no longer need to keep track of separate training and validation sets. So, especially for small datasets, it's a good improvement!***
+
+
 
 
 
