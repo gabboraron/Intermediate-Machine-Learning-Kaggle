@@ -35,7 +35,11 @@ MAE from Approach 1 (Drop columns with missing values):
 >  The imputed value won't be exactly right in most cases, but it usually leads to more accurate models than you would get from dropping the column entirely.
 
 1. To make it, use [`SimpleImputer()`](https://scikit-learn.org/stable/modules/generated/sklearn.impute.SimpleImputer.html) from [scikit-learn](https://scikit-learn.org/stable/index.html). You can use parameters such as: 
-    - `strategy=` which can be `mean`, `median`, `most_frequent` which calculates based on each column or `constant`
+    - `strategy=` which can be calculated based on each column: 
+       - `mean`- replace missing values by the mean along each column, which will be [the average of a data set](https://www.statisticshowto.com/probability-and-statistics/statistics-definitions/mean-median-mode/#:~:text=The%20mean%20is%20the%20average,of%20the%20set%20of%20numbers.)
+       - `median` - replace missing values by the median of each column which [is the average of a data set](https://www.statisticshowto.com/probability-and-statistics/statistics-definitions/mean-median-mode/#:~:text=The%20mean%20is%20the%20average,of%20the%20set%20of%20numbers.)
+       - `most_frequent` - replace missing values with the most frequent values in the column 
+       - can be: `constant` which replace missing values with `fill_value`
     - `missing_values` which set what type will be the replacement: `int`, `float`, `str`, `np.nan` or `None`, by default: `default=np.nan`
 2. on the returned table you can use [`fit_transform(input_samples)`](https://scikit-learn.org/stable/modules/generated/sklearn.impute.SimpleImputer.html#sklearn.impute.SimpleImputer.fit_transform) to fit to data, then transform it, and returns a transformed version of `input_samples`
    - also you can use just [`transform(X)`](https://scikit-learn.org/stable/modules/generated/sklearn.impute.SimpleImputer.html#sklearn.impute.SimpleImputer.transform) which will impute all missing values in `X` and returns `X` with imputed values.
@@ -265,7 +269,7 @@ MAE from Approach 3 (One-Hot Encoding):
 
 A simple way to keep your data preprocessing and modeling code organized. Specifically, a pipeline bundles preprocessing and modeling steps so you can use the whole bundle as if it were a single step.
 
-***Why to use pipelines: ***
+***Why to use pipelines:***
 1. **Cleaner Code:** Accounting for data at each step of preprocessing can get messy. With a pipeline, you won't need to manually keep track of your training and validation data at each step. like on [DAGsHub](https://dagshub.com/)
 2. **Fewer Bugs:** There are fewer opportunities to misapply a step or forget a preprocessing step.
 3. **Easier to Productionize:** It can be surprisingly hard to transition a model from a prototype to something deployable at scale. We won't go into the many related concerns here, but pipelines can help.
@@ -347,10 +351,10 @@ MAE: 160679.18917034855
 > 
 > *In the case of `numerical_transformer` and `categorical_transformer` this means that you have to change the [`SimpleImputer()`](https://scikit-learn.org/stable/modules/generated/sklearn.impute.SimpleImputer.html)'s `strategy` attribute  and/or set up better `fill_value` too.*
 > 
-> *In the case of `model` you can change in the [`RandomForestRegressor()`](https://scikit-learn.org/stable/modules/generated/sklearn.ensemble.RandomForestRegressor.html) 's `n_estimators` and `random_state`.* 
+> *In the case of `model` you can change in the [`RandomForestRegressor()`](https://scikit-learn.org/stable/modules/generated/sklearn.ensemble.RandomForestRegressor.html) 's [`n_estimators`](https://en.wikipedia.org/wiki/Hyperparameter_optimization) and `random_state`.* 
 
 ## Cross-Validation
-[Wikipedia](https://en.wikipedia.org/wiki/Cross-validation_(statistics))
+[Wikipedia](https://en.wikipedia.org/wiki/Cross-validation_(statistics)); file: [exercise-cross-validation.ipynb](https://github.com/gabboraron/Intermediate-Machine-Learning-Kaggle/blob/main/exercise-cross-validation.ipynb)
 
 > A better way to test your models.
 >
@@ -382,11 +386,12 @@ And we can do this on the all dataset:
 We obtain the cross-validation scores with the [`cross_val_score()`](https://scikit-learn.org/stable/modules/generated/sklearn.model_selection.cross_val_score.html) function from [scikit-learn](https://scikit-learn.org/stable/index.html).
 - `cv` - Determines the cross-validation splitting strategy. Possible inputs for cv are:
    - `None` - by default 5-fold cross validation
-   - `int` -  to specify the number of folds in a (Stratified)KFold
+   - `int` -  to specify the number of folds in a (Stratified)KFold - **usually the higher the worse the result**
    - [CV splitter](https://scikit-learn.org/stable/glossary.html#term-CV-splitter) like [`train_test_split`](https://scikit-learn.org/stable/modules/generated/sklearn.model_selection.train_test_split.html#sklearn.model_selection.train_test_split): `clf = svm.SVC(kernel='linear', C=1).fit(X_train, y_train)`
      - `cross-validation generator` - A non-estimator family of classes used to split a dataset into a sequence of train and test portions 
      -  `cross-validation estimator` An estimator that has built-in cross-validation capabilities to automatically select the best hyper-parameters ex: [`ElasticNetCV`](https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.ElasticNetCV.html#sklearn.linear_model.ElasticNetCV), [`LogisticRegressionCV`](https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.LogisticRegressionCV.html#sklearn.linear_model.LogisticRegressionCV)
      -  `scorer` - A non-estimator callable object which evaluates an estimator on given test data, returning a number. `clf.score(X_test, y_test)`. **higher return values are better than lower return values**. If you are using [`GridSearchCV`](https://scikit-learn.org/stable/modules/generated/sklearn.model_selection.GridSearchCV.html#sklearn.model_selection.GridSearchCV) or [`cross_val_score`](https://scikit-learn.org/stable/modules/generated/sklearn.model_selection.cross_val_score.html#sklearn.model_selection.cross_val_score) you can set [`scoring`](https://scikit-learn.org/stable/modules/model_evaluation.html#scoring-parameter) parameter.
+- `scoring` - this will quantifying the quality of predictions, you can use [predefined values for common use-cases](https://scikit-learn.org/stable/modules/model_evaluation.html#common-cases-predefined-values) or [you can define your scoring strategy from metric functions](https://scikit-learn.org/stable/modules/model_evaluation.html#defining-your-scoring-strategy-from-metric-functions)
    - An iterable that generates (train, test) splits as arrays of indices, like [`train_test_split`](https://scikit-learn.org/stable/modules/generated/sklearn.model_selection.train_test_split.html#sklearn.model_selection.train_test_split)
 
 ```Python
@@ -396,13 +401,15 @@ from sklearn.impute import SimpleImputer
 from sklearn.model_selection import cross_val_score
 
 my_pipeline = Pipeline(steps=[('preprocessor', SimpleImputer()),
-                              ('model', RandomForestRegressor(n_estimators=50,
-                                                              random_state=0))
+                              ('model', RandomForestRegressor(n_estimators=50, # the number of trees in the forest, to optimize it see Hyperparameter optimization problem
+                                                              random_state=0)) # Controls the randomness of the bootstrapping
+                                                                               # of the samples used when building trees
+                                                                               # if bootstrap=True
                              ])
 
 # Multiply by -1 since sklearn calculates *negative* MAE
 scores = -1 * cross_val_score(my_pipeline, X, y,
-                              cv=5,
+                              cv=5, # get lower for better output
                               scoring='neg_mean_absolute_error') # which is a regressor: 
                                                                  # https://scikit-learn.org/stable/modules/generated/sklearn.metrics.mean_absolute_error.html#sklearn.metrics.mean_absolute_error
 
@@ -421,7 +428,86 @@ Average MAE score (across experiments):
 
 ***Using cross-validation yields a much better measure of model quality, with the added benefit of cleaning up our code: note that we no longer need to keep track of separate training and validation sets. So, especially for small datasets, it's a good improvement!***
 
+To optimize better values for `n_estimators` see [Hyperparameter optimization](https://en.wikipedia.org/wiki/Hyperparameter_optimization) and [`.GridSearcCV`](https://scikit-learn.org/stable/modules/generated/sklearn.model_selection.GridSearchCV.html) for better model selection.
 
+## XGBoost
+> *The most accurate modeling technique for structured data.*
+> 
+> file: [exercise-xgboost.ipynb](https://github.com/gabboraron/Intermediate-Machine-Learning-Kaggle/blob/main/exercise-xgboost.ipynb)
+
+Now we are using [gradient-boosting](https://en.wikipedia.org/wiki/Gradient_boosting) insted of [random forests](https://en.wikipedia.org/wiki/Random_forest#:~:text=Random%20forests%20or%20random%20decision,decision%20trees%20at%20training%20time.&text=Random%20forests%20generally%20outperform%20decision,lower%20than%20gradient%20boosted%20trees.).
+
+It begins by initializing the ensemble with a single model, whose predictions can be pretty naive.
+
+Then, we start the cycle:
+1. we use the current ensemble to generate predictions for each observation in the dataset. To make a prediction, we add the predictions from all models in the ensemble to calculate a loss function *(ex: [mean squared error](https://en.wikipedia.org/wiki/Mean_squared_error)).*
+2. Then, we use the loss function to fit a new model that will be added to the ensemble. Specifically, we determine model parameters so that adding this new model to the ensemble will reduce the loss. *(Side note: The "gradient" in "gradient boosting" refers to the fact that we'll use [gradient descent](https://en.wikipedia.org/wiki/Gradient_descent) on the loss function to determine the parameters in this new model. "X" stands for extreme, so this will be extreme gradient boosting)*
+3. Finally, we add the new model to ensemble, and ...
+4. ... repeat!
+
+![XGBoost cycle infographic from Kaggle article](https://i.imgur.com/MvCGENh.png)
+
+for this we will use [`xgboost.XGBRegressor`](https://xgboost.readthedocs.io/en/latest/python/python_api.html#module-xgboost.sklearn) wehere we also can set
+- `n_estimators` - pecifies how many times to go through the modeling cycle described above. It is equal to the number of models that we include in the ensemble
+   - **Too low a value causes [underfitting](https://www.ibm.com/cloud/learn/underfitting#:~:text=Underfitting%20is%20a%20scenario%20in,training%20set%20and%20unseen%20data.)**
+   - **Too high a value causes [overfitting](https://www.ibm.com/cloud/learn/overfitting)**
+   - Typical values range from `100-1000`, though this depends a lot on the `learning_rate`
+- `early_stopping_rounds` - Early stopping causes the model to stop iterating when the validation score stops improving, at the ideal value for `n_estimators`. *Setting `early_stopping_rounds=5` is a reasonable choice. In this case, we stop after 5 straight rounds of deteriorating validation scores*
+   - `eval_set` - we need to set for `early_stopping_rounds` [`fit()`](https://xgboost.readthedocs.io/en/latest/python/python_api.html#xgboost.XGBRegressor.fit) values to fit gradient boosting model. This parameter replaces `early_stopping_round` in `fit()`. **The last entry will be used for early stopping!** *ex: usually `eval_set=[(X_valid, y_valid)]`*
+- `verbose` - if True writes the evaluation metric measured on the validation set to stderr
+- [`learning_rate`](https://machinelearningmastery.com/understand-the-dynamics-of-learning-rate-on-deep-learning-neural-networks/#:~:text=Specifically%2C%20the%20learning%20rate%20is,is%20adapted%20to%20the%20problem.) - instead of getting predictions by simply adding up the predictions from each component model, we can multiply the predictions from each model by a small number before adding them => each tree we add to the ensemble helps us less **!** *In general, a small learning rate and large number of estimators will yield more accurate XGBoost models*, by default this is `learning_rate=0.1`
+- `n_jobs` - On larger datasets where runtime is a consideration, you can use parallelism to build your models faster. It's common to set the parameter `n_jobs` equal to the number of cores on your machine. On smaller datasets, this won't help. At [Google Collab this is 2, at Kaggle this is 4](https://kazemnejad.com/blog/how_to_do_deep_learning_research_with_absolutely_no_gpus_part_2) at [Deepnote 2-16, depends on subscirption](https://docs.deepnote.com/resources/pricing) at [gradient it means 2-8-12](https://gradient.run/instances) at [Datalore](https://datalore.jetbrains.com/) this will be [an AWS based ec2 t2.medium based VM which has 2 vCPU](https://aws.amazon.com/ec2/instance-types/t2/)
+- [`random_state`](https://numpy.org/doc/stable/reference/random/legacy.html#numpy.random.RandomState) - expose a number of methods for generating random numbers drawn from a variety of probability distributions. In addition to the distribution-specific arguments, each method takes a keyword argument size that defaults to None. A seed can be `seed{None, int, array_like, BitGenerator}`
+- and many of parameters like before at `cross_val_score`
+
+```Python
+from xgboost import XGBRegressor
+from sklearn.metrics import mean_absolute_error
+
+#my_model = XGBRegressor()
+#my_model.fit(X_train, y_train)
+
+my_model = XGBRegressor(n_estimators=1000, learning_rate=0.05, n_jobs=4)
+my_model.fit(X_train, y_train, 
+             early_stopping_rounds=5, 
+             eval_set=[(X_valid, y_valid)],
+             verbose=False)
+
+predictions = my_model.predict(X_valid)
+print("Mean Absolute Error: " + str(mean_absolute_error(predictions, y_valid)))
+```
+```
+fst Out:
+Mean Absolute Error: 239435.01260125183
+```
+
+## Data Leakage
+> Find and fix this problem that ruins your model in subtle ways.
+> 
+> *Data leakage (or leakage) happens when your training data contains information about the target, but similar data will not be available when the model is used for prediction. This leads to high performance on the training set (and possibly even the validation data), but the model will perform poorly in production.*
+> 
+> ***In other words, leakage causes a model to look accurate until you start making decisions with the model, and then the model becomes very inaccurate.***
+
+### Target leakage
+> when your predictors include data that will not be available at the time you make predictions. It is important to think about target leakage in terms of the timing or chronological order that data becomes available, not merely whether a feature helps make good predictions.
+>
+> *An example will be helpful. Imagine you want to predict who will get sick with pneumonia. The top few rows of your raw data look like this:*
+> 
+> ```
+> got_pneumonia   age   weight  male  took_antibiotic_medicine  ...
+> False           65     100   False    False                   ...
+> False           72     130   True     False                   ...
+> True            58     100   False    True                    ...
+> ```
+> 
+> *People take antibiotic medicines after getting pneumonia in order to recover. The raw data shows a strong relationship between those columns, but took_antibiotic_medicine is frequently changed after the value for got_pneumonia is determined. This is target leakage.*
+> - *Since validation data comes from the same source as training data, the pattern will repeat itself in validation, and the model will have great validation (or cross-validation) scores.*
+> - *But the model will be very inaccurate when subsequently deployed in the real world, because even patients who will get pneumonia won't have received antibiotics yet*
+
+#### Train-Test Contamination
+> Recall that validation is meant to be a measure of how the model does on data that it hasn't considered before. You can corrupt this process in subtle ways if the validation data affects the preprocessing behavior. 
+
+If your validation is based on a simple train-test split, exclude the validation data from any type of fitting, including the fitting of preprocessing steps. This is easier if you use scikit-learn pipelines. When using cross-validation, it's even more critical that you do your preprocessing inside the pipeline!
 
 
 
