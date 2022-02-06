@@ -265,7 +265,7 @@ MAE from Approach 3 (One-Hot Encoding):
 ## Pipelines
 > A critical skill for deploying (and even testing) complex models with pre-processing.
 > 
-> full example of pipelines: [kaggle.com/alexisbcook/exercise-pipelines](https://www.kaggle.com/alexisbcook/exercise-pipelines); or [exercise-pipelines.ipynb]()
+> full example of pipelines: [kaggle.com/alexisbcook/exercise-pipelines](https://www.kaggle.com/alexisbcook/exercise-pipelines); or [exercise-pipelines.ipynb](https://github.com/gabboraron/Intermediate-Machine-Learning-Kaggle/blob/main/exercise-pipelines.ipynb)
 
 A simple way to keep your data preprocessing and modeling code organized. Specifically, a pipeline bundles preprocessing and modeling steps so you can use the whole bundle as if it were a single step.
 
